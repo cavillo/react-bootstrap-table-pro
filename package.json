@@ -2,6 +2,11 @@
   "name": "react-bootstrap-table-pro",
   "version": "0.0.1",
   "description": "Awesome table component to work efficiently with dynamic data.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cavillo/react-bootstrap-table-pro"
+  },
+  "license": "MIT",
   "main": "build/index.js",
   "peerDependencies": {
     "react": "^15.5.4"
