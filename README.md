@@ -43,15 +43,15 @@ class Test extends Component {
           <div className='table-responsive'>
             <h2>New clients</h2>
             <TablePro
-              pageSize={10}
-              keys={
+              pageSize={10} // Number of rows per page.
+              keys={ // Columns defined in the table.
                 {
-                  name: {
-                    label: 'Name',
-                    searchAs:(k,a)=>{
+                  name: { // key property for each element in data set.
+                    label: 'Name', // name to print in table header.
+                    searchAs:(k,a)=>{ // function used to get searchable value. k: row ID, a: value. -> (a === this.state.data[k].name).
                       return a;
                     },
-                    renderAs:(k,a)=>{
+                    renderAs:(k,a)=>{ // function used to get printable value. k: row ID, a: value. -> (a === this.state.data[k].name).
                       return(
                         <a href={`/clients/${k}`}>{a}</a>
                       );
@@ -79,7 +79,7 @@ class Test extends Component {
                   },
                 }
               }
-              data={this.state.data}/>
+              data={this.state.data}/> // Data source in Object format. (See this.state.data defined in constructor).
           </div>
         </div>
       </div>
