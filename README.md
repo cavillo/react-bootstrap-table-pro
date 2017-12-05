@@ -87,3 +87,6 @@ class Test extends Component {
   }
 }
 ```
+
+Result:
+![Table result](https://firebasestorage.googleapis.com/v0/b/reastrap-e4e1f.appspot.com/o/table.png?alt=media&token=7f23397c-46a6-4049-873c-38303f412270)
