@@ -5,8 +5,10 @@ class TablePro extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      page:0,
-      searchText:'',
+      page: 0,
+      searchText: '',
+      sortType: props.defSortType,
+      sortBy: props.defSortBy?props.defSortBy:this.props.keys?Object.keys(this.props.keys)[0]:undefined,
     };
   }
   componentDidMount(){
@@ -16,8 +18,19 @@ class TablePro extends Component {
     items = items.map(
       (key)=>{
         return (
-          <th key={`tablepro-header-key${key}`}>
+          <th
+            onClick={
+              ()=>{
+                this.setState(
+                  {
+                    sortBy:key,
+                    sortType:(this.state.sortBy===key?(this.state.sortType==='ASC'?'DESC':'ASC'):'ASC'),
+                  }
+                );
+              }
+            } key={`tablepro-header-key${key}`}>
             {this.props.keys[key].label?this.props.keys[key].label:key.toUpperCase()}
+            {this.state.sortBy===key?(this.state.sortType===('ASC')?'↓':'↑'):''}
           </th>
         );
       }
@@ -30,48 +43,87 @@ class TablePro extends Component {
   }
   renderRow(row){
     let items = Object.keys(this.props.keys);
-    let content = items.map(
+    items = items.map(
       (a)=>{
         return (
-          this.props.keys[a].searchAs?this.props.keys[a].searchAs(row,this.props.data[row][a]):this.props.data[row][a]
+          <td key={`tablepro-row-key${row}-${a}`}>
+            {this.props.keys[a].renderAs?this.props.keys[a].renderAs(row,this.props.data[row][a]):this.props.data[row][a]}
+          </td>
         );
       }
-    ).reduce((a,b)=>{
-      return `${a} ${b}`;
-    },'');
-    if (this.state.searchText === '' || content.toLowerCase().search(this.state.searchText.toLowerCase()) >= 0) {
-      items = items.map(
-        (a)=>{
-          return (
-            <td key={`tablepro-row-key${row}-${a}`}>
-              {this.props.keys[a].renderAs?this.props.keys[a].renderAs(row,this.props.data[row][a]):this.props.data[row][a]}
-            </td>
-          );
-        }
-      );
-      return (
-        <tr key={row}>
-          {items}
-        </tr>
-      );
-    }else{
-      return null;
-    }
+    );
+    return (
+      <tr key={row}>
+        {items}
+      </tr>
+    );
   }
   renderBody(){
-    let items = Object.keys(this.props.data).reverse().slice(this.state.page*this.props.pageSize,(this.state.page*this.props.pageSize)+this.props.pageSize);
+    let data = this.props.data;
 
-    items = items.map(this.renderRow.bind(this));
-    return items;
+    // Filter data by search
+    data = Object.keys(data).filter((row)=>{
+      const items = Object.keys(this.props.keys);
+      const content = items.map(
+        (key)=>{
+          return (
+            this.props.keys[key].sortAs ?
+              this.props.keys[key].sortAs(row,data[row][key]) :
+              this.props.keys[key].searchAs ?
+                this.props.keys[key].searchAs(row,data[row][key]) :
+                data[row][key]
+          );
+        }
+      ).reduce((a,b)=>{
+        return `${a} ${b}`;
+      },'');
+      return (this.state.searchText === '' || content.toLowerCase().search(this.state.searchText.toLowerCase()) >= 0);
+    }).reduce((a,b)=>{a[b]=data[b];return a;},{});
+
+    // Sort the data
+    const sortBy = this.state.sortBy?this.state.sortBy:Object.keys(this.props.keys)[0];
+    if (this.props.keys[sortBy]) {
+      data = Object.keys(data).sort((a,b)=>{
+        let elem1 = '';
+        if(data[a][sortBy] !== undefined){
+          elem1 = this.props.keys[sortBy].searchAs ?
+            this.props.keys[sortBy].searchAs(a,data[a][sortBy]).toLowerCase() :
+            data[a][sortBy].toLowerCase();
+        }
+        let elem2 = '';
+        if(data[b][sortBy] !== undefined){
+          elem2 = this.props.keys[sortBy].searchAs ?
+            this.props.keys[sortBy].searchAs(b,data[b][sortBy]).toLowerCase() :
+            data[b][sortBy].toLowerCase();
+        }
+        const dif = ((elem1 === elem2) ? 0 : (elem1 > elem2) ? -1 : 1);
+
+        if (this.state.sortType === 'DESC') {
+          return -dif;
+        }else{
+          return dif;
+        }
+      }).reduce((a,b)=>{a[b]=data[b];return a;},{});
+    }
+
+    // Get # of pages for the rendering data
+    const totalPages = Object.keys(data).length<=this.props.pageSize?1:parseInt(Math.round(Object.keys(data).length/this.props.pageSize), 10);
+
+    // Get the render elements
+    let body = Object.keys(data).reverse().slice(this.state.page*this.props.pageSize,(this.state.page*this.props.pageSize)+this.props.pageSize);
+    body = body.map(this.renderRow.bind(this));
+
+    return {
+      body,
+      totalPages
+    };
   }
-  renderPaginator(){
+  renderPaginator(totalPages){
     let pages = [];
-    const items = Object.keys(this.props.data).reverse();
-    const totalPages = items.length<=this.props.pageSize?1:parseInt(Math.round(items.length/this.props.pageSize), 10);
     for (var i = 0; i < totalPages; i++) {
       pages.push(
         <li key={i} className={`page-item ${this.state.page===i?'active':''}`}>
-          <button onClick={this.goToPage.bind(this,i)} className='page-link' >{i+1}</button>
+          <button onClick={this.goToPage.bind(this,i,totalPages)} className='page-link' >{i+1}</button>
         </li>
       );
     }
@@ -80,19 +132,17 @@ class TablePro extends Component {
       <div>
         <ul className='pagination pagination-sm'>
           <li className={`page-item ${this.state.page===0?'disabled':''}`}>
-            <button onClick={this.goToPage.bind(this,this.state.page-1)} className='page-link' >&laquo;</button>
+            <button onClick={this.goToPage.bind(this,this.state.page-1,totalPages)} className='page-link' >&laquo;</button>
           </li>
           {pages}
           <li className={`page-item ${this.state.page===(totalPages-1)?'disabled':''}`}>
-            <button onClick={this.goToPage.bind(this,this.state.page+1)} className='page-link' >&raquo;</button>
+            <button onClick={this.goToPage.bind(this,this.state.page+1,totalPages)} className='page-link' >&raquo;</button>
           </li>
         </ul>
       </div>
     );
   }
-  goToPage(page){
-    const items = Object.keys(this.props.data).reverse();
-    const totalPages = items.length<=this.props.pageSize?1:parseInt(Math.round(items.length/this.props.pageSize), 10);
+  goToPage(page, totalPages){
     let newPage = parseInt(page, 10);
     if (newPage >= 0 && newPage < totalPages) {
       this.setState({page:newPage});
@@ -111,6 +161,10 @@ class TablePro extends Component {
     this.setState({searchText: event.target.value});
   }
   render() {
+    const {
+      body,
+      totalPages
+    } = this.renderBody();
     return (
       <div className="table-pro">
         {this.renderSearchBar()}
@@ -120,10 +174,10 @@ class TablePro extends Component {
               {this.renderHeader()}
             </thead>
             <tbody>
-              {this.renderBody()}
+              {body}
             </tbody>
           </table>
-          {this.renderPaginator()}
+          {this.renderPaginator(totalPages)}
         </div>
       </div>
     );
@@ -134,11 +188,14 @@ TablePro.defaultProps = {
   data: {},
   pagination: true,
   pageSize: 10,
+  defSortType: 'ASC',
 };
 TablePro.propTypes = {
   keys: PropTypes.object,
   data: PropTypes.object,
   pagination: PropTypes.bool,
   pageSize: PropTypes.number,
+  defSortType: PropTypes.string,
+  defSortBy: PropTypes.string,
 };
 export default TablePro;

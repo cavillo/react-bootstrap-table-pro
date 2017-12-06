@@ -528,7 +528,9 @@ var TablePro = function (_Component) {
 
     _this.state = {
       page: 0,
-      searchText: ''
+      searchText: '',
+      sortType: props.defSortType,
+      sortBy: props.defSortBy ? props.defSortBy : _this.props.keys ? Object.keys(_this.props.keys)[0] : undefined
     };
     return _this;
   }
@@ -545,8 +547,15 @@ var TablePro = function (_Component) {
       items = items.map(function (key) {
         return _react2.default.createElement(
           'th',
-          { key: 'tablepro-header-key' + key },
-          _this2.props.keys[key].label ? _this2.props.keys[key].label : key.toUpperCase()
+          {
+            onClick: function onClick() {
+              _this2.setState({
+                sortBy: key,
+                sortType: _this2.state.sortBy === key ? _this2.state.sortType === 'ASC' ? 'DESC' : 'ASC' : 'ASC'
+              });
+            }, key: 'tablepro-header-key' + key },
+          _this2.props.keys[key].label ? _this2.props.keys[key].label : key.toUpperCase(),
+          _this2.state.sortBy === key ? _this2.state.sortType === 'ASC' ? '↓' : '↑' : ''
         );
       });
       return _react2.default.createElement(
@@ -561,49 +570,86 @@ var TablePro = function (_Component) {
       var _this3 = this;
 
       var items = Object.keys(this.props.keys);
-      var content = items.map(function (a) {
-        return _this3.props.keys[a].searchAs ? _this3.props.keys[a].searchAs(row, _this3.props.data[row][a]) : _this3.props.data[row][a];
-      }).reduce(function (a, b) {
-        return a + ' ' + b;
-      }, '');
-      if (this.state.searchText === '' || content.toLowerCase().search(this.state.searchText.toLowerCase()) >= 0) {
-        items = items.map(function (a) {
-          return _react2.default.createElement(
-            'td',
-            { key: 'tablepro-row-key' + row + '-' + a },
-            _this3.props.keys[a].renderAs ? _this3.props.keys[a].renderAs(row, _this3.props.data[row][a]) : _this3.props.data[row][a]
-          );
-        });
+      items = items.map(function (a) {
         return _react2.default.createElement(
-          'tr',
-          { key: row },
-          items
+          'td',
+          { key: 'tablepro-row-key' + row + '-' + a },
+          _this3.props.keys[a].renderAs ? _this3.props.keys[a].renderAs(row, _this3.props.data[row][a]) : _this3.props.data[row][a]
         );
-      } else {
-        return null;
-      }
+      });
+      return _react2.default.createElement(
+        'tr',
+        { key: row },
+        items
+      );
     }
   }, {
     key: 'renderBody',
     value: function renderBody() {
-      var items = Object.keys(this.props.data).reverse().slice(this.state.page * this.props.pageSize, this.state.page * this.props.pageSize + this.props.pageSize);
+      var _this4 = this;
 
-      items = items.map(this.renderRow.bind(this));
-      return items;
+      var data = this.props.data;
+
+      // Filter data by search
+      data = Object.keys(data).filter(function (row) {
+        var items = Object.keys(_this4.props.keys);
+        var content = items.map(function (key) {
+          return _this4.props.keys[key].sortAs ? _this4.props.keys[key].sortAs(row, data[row][key]) : _this4.props.keys[key].searchAs ? _this4.props.keys[key].searchAs(row, data[row][key]) : data[row][key];
+        }).reduce(function (a, b) {
+          return a + ' ' + b;
+        }, '');
+        return _this4.state.searchText === '' || content.toLowerCase().search(_this4.state.searchText.toLowerCase()) >= 0;
+      }).reduce(function (a, b) {
+        a[b] = data[b];return a;
+      }, {});
+
+      // Sort the data
+      var sortBy = this.state.sortBy ? this.state.sortBy : Object.keys(this.props.keys)[0];
+      if (this.props.keys[sortBy]) {
+        data = Object.keys(data).sort(function (a, b) {
+          var elem1 = '';
+          if (data[a][sortBy] !== undefined) {
+            elem1 = _this4.props.keys[sortBy].searchAs ? _this4.props.keys[sortBy].searchAs(a, data[a][sortBy]).toLowerCase() : data[a][sortBy].toLowerCase();
+          }
+          var elem2 = '';
+          if (data[b][sortBy] !== undefined) {
+            elem2 = _this4.props.keys[sortBy].searchAs ? _this4.props.keys[sortBy].searchAs(b, data[b][sortBy]).toLowerCase() : data[b][sortBy].toLowerCase();
+          }
+          var dif = elem1 === elem2 ? 0 : elem1 > elem2 ? -1 : 1;
+
+          if (_this4.state.sortType === 'DESC') {
+            return -dif;
+          } else {
+            return dif;
+          }
+        }).reduce(function (a, b) {
+          a[b] = data[b];return a;
+        }, {});
+      }
+
+      // Get # of pages for the rendering data
+      var totalPages = Object.keys(data).length <= this.props.pageSize ? 1 : parseInt(Math.round(Object.keys(data).length / this.props.pageSize), 10);
+
+      // Get the render elements
+      var body = Object.keys(data).reverse().slice(this.state.page * this.props.pageSize, this.state.page * this.props.pageSize + this.props.pageSize);
+      body = body.map(this.renderRow.bind(this));
+
+      return {
+        body: body,
+        totalPages: totalPages
+      };
     }
   }, {
     key: 'renderPaginator',
-    value: function renderPaginator() {
+    value: function renderPaginator(totalPages) {
       var pages = [];
-      var items = Object.keys(this.props.data).reverse();
-      var totalPages = items.length <= this.props.pageSize ? 1 : parseInt(Math.round(items.length / this.props.pageSize), 10);
       for (var i = 0; i < totalPages; i++) {
         pages.push(_react2.default.createElement(
           'li',
           { key: i, className: 'page-item ' + (this.state.page === i ? 'active' : '') },
           _react2.default.createElement(
             'button',
-            { onClick: this.goToPage.bind(this, i), className: 'page-link' },
+            { onClick: this.goToPage.bind(this, i, totalPages), className: 'page-link' },
             i + 1
           )
         ));
@@ -620,7 +666,7 @@ var TablePro = function (_Component) {
             { className: 'page-item ' + (this.state.page === 0 ? 'disabled' : '') },
             _react2.default.createElement(
               'button',
-              { onClick: this.goToPage.bind(this, this.state.page - 1), className: 'page-link' },
+              { onClick: this.goToPage.bind(this, this.state.page - 1, totalPages), className: 'page-link' },
               '\xAB'
             )
           ),
@@ -630,7 +676,7 @@ var TablePro = function (_Component) {
             { className: 'page-item ' + (this.state.page === totalPages - 1 ? 'disabled' : '') },
             _react2.default.createElement(
               'button',
-              { onClick: this.goToPage.bind(this, this.state.page + 1), className: 'page-link' },
+              { onClick: this.goToPage.bind(this, this.state.page + 1, totalPages), className: 'page-link' },
               '\xBB'
             )
           )
@@ -639,9 +685,7 @@ var TablePro = function (_Component) {
     }
   }, {
     key: 'goToPage',
-    value: function goToPage(page) {
-      var items = Object.keys(this.props.data).reverse();
-      var totalPages = items.length <= this.props.pageSize ? 1 : parseInt(Math.round(items.length / this.props.pageSize), 10);
+    value: function goToPage(page, totalPages) {
       var newPage = parseInt(page, 10);
       if (newPage >= 0 && newPage < totalPages) {
         this.setState({ page: newPage });
@@ -668,6 +712,10 @@ var TablePro = function (_Component) {
   }, {
     key: 'render',
     value: function render() {
+      var _renderBody = this.renderBody(),
+          body = _renderBody.body,
+          totalPages = _renderBody.totalPages;
+
       return _react2.default.createElement(
         'div',
         { className: 'table-pro' },
@@ -686,10 +734,10 @@ var TablePro = function (_Component) {
             _react2.default.createElement(
               'tbody',
               null,
-              this.renderBody()
+              body
             )
           ),
-          this.renderPaginator()
+          this.renderPaginator(totalPages)
         )
       );
     }
@@ -702,13 +750,16 @@ TablePro.defaultProps = {
   keys: {},
   data: {},
   pagination: true,
-  pageSize: 10
+  pageSize: 10,
+  defSortType: 'ASC'
 };
 TablePro.propTypes = {
   keys: _propTypes2.default.object,
   data: _propTypes2.default.object,
   pagination: _propTypes2.default.bool,
-  pageSize: _propTypes2.default.number
+  pageSize: _propTypes2.default.number,
+  defSortType: _propTypes2.default.string,
+  defSortBy: _propTypes2.default.string
 };
 exports.default = TablePro;
 
