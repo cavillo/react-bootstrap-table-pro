@@ -596,7 +596,7 @@ var TablePro = function (_Component) {
     value: function renderPaginator() {
       var pages = [];
       var items = Object.keys(this.props.data).reverse();
-      var totalPages = items.length <= this.props.pageSize ? 1 : parseInt(items.length / this.props.pageSize, 10);
+      var totalPages = items.length <= this.props.pageSize ? 1 : parseInt(Math.round(items.length / this.props.pageSize), 10);
       for (var i = 0; i < totalPages; i++) {
         pages.push(_react2.default.createElement(
           'li',
@@ -641,7 +641,7 @@ var TablePro = function (_Component) {
     key: 'goToPage',
     value: function goToPage(page) {
       var items = Object.keys(this.props.data).reverse();
-      var totalPages = items.length <= this.props.pageSize ? 1 : parseInt(items.length / this.props.pageSize, 10);
+      var totalPages = items.length <= this.props.pageSize ? 1 : parseInt(Math.round(items.length / this.props.pageSize), 10);
       var newPage = parseInt(page, 10);
       if (newPage >= 0 && newPage < totalPages) {
         this.setState({ page: newPage });
