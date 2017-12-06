@@ -67,7 +67,7 @@ class TablePro extends Component {
   renderPaginator(){
     let pages = [];
     const items = Object.keys(this.props.data).reverse();
-    const totalPages = items.length<=this.props.pageSize?1:parseInt(items.length/this.props.pageSize, 10);
+    const totalPages = items.length<=this.props.pageSize?1:parseInt(Math.round(items.length/this.props.pageSize), 10);
     for (var i = 0; i < totalPages; i++) {
       pages.push(
         <li key={i} className={`page-item ${this.state.page===i?'active':''}`}>
@@ -92,7 +92,7 @@ class TablePro extends Component {
   }
   goToPage(page){
     const items = Object.keys(this.props.data).reverse();
-    const totalPages = items.length<=this.props.pageSize?1:parseInt(items.length/this.props.pageSize, 10);
+    const totalPages = items.length<=this.props.pageSize?1:parseInt(Math.round(items.length/this.props.pageSize), 10);
     let newPage = parseInt(page, 10);
     if (newPage >= 0 && newPage < totalPages) {
       this.setState({page:newPage});
@@ -142,4 +142,3 @@ TablePro.propTypes = {
   pageSize: PropTypes.number,
 };
 export default TablePro;
-
